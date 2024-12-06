@@ -10,6 +10,9 @@ from schemas import (
     UpdateBook,
     UpdateAuthor
 )
+import redis_db
+
+import json
 
 from collections.abc import Generator
 from typing import Annotated
@@ -31,34 +34,58 @@ SessionDep = Annotated[Session, Depends(get_url)]
 
 
 @app.get("/", status_code=200)
-def root() -> ApiResponseDefault:
+async def root() -> ApiResponseDefault:
     return {"detail": "HOLI"}
 
 
 # ----------------------------- GET -----------------------------
 @app.get("/books", status_code=200)
-def get_books(db: SessionDep) -> list[Books]:
-    return list(
+async def get_books(db: SessionDep) -> list[Books]:
+    cache_key = "get_books"
+    cached_books = redis_db.get(cache_key)
+
+    if cached_books:
+        return json.loads(cached_books)
+
+    books = list(
         map(
             lambda obj: Books.model_validate(obj),
             db.query(models.Books).all())
     )
 
+    redis_db.set(cache_key, json.dumps(books))
+    return books
+
 
 @app.get("/authors", status_code=200)
-def get_authors(db: SessionDep) -> list[Authors]:
-    return list(
+async def get_authors(db: SessionDep) -> list[Authors]:
+    cache_key = "get_authors"
+    cached_books = redis_db.get(cache_key)
+
+    if cached_books:
+        return json.loads(cached_books)
+
+    authors = list(
         map(
             lambda obj: Authors.model_validate(obj), 
             db.query(models.Authors).all()
         )
     )
 
+    redis_db.set(cache_key, json.dumps(authors))
+    return authors
+
 
 @app.get("/books/{id_book}", status_code=200)
-def get_book(id_book: int, db: SessionDep) -> Books:
+async def get_book(id_book: int, db: SessionDep) -> Books:
+    cache_key = f"get_books_{id_book}"
+    cached_book = redis_db.get(cache_key)
+
+    if cached_book:
+        return json.loads(cached_book)
+
     try:
-        return Books.model_validate(
+        book = Books.model_validate(
             db.query(models.Books)
             .filter(models.Books.id == id_book)
             .first()
@@ -66,11 +93,20 @@ def get_book(id_book: int, db: SessionDep) -> Books:
     except Exception as e:
         raise HTTPException(404, detail=repr(e))
 
+    redis_db.set(cache_key, json.dumps(book))
+    return book
+
 
 @app.get("/authors/{id_author}", status_code=200)
-def get_author(id_author: int, db: SessionDep) -> Authors:
+async def get_author(id_author: int, db: SessionDep) -> Authors:
+    cache_key = f"get_authors_{id_author}"
+    cached_author = redis_db.get(cache_key)
+
+    if cached_author:
+        return json.loads(cached_author)
+
     try:
-        return Authors.model_validate(
+        author = Authors.model_validate(
             db.query(models.Authors)
             .filter(models.Authors.id == id_author)
             .first()
@@ -78,10 +114,18 @@ def get_author(id_author: int, db: SessionDep) -> Authors:
     except Exception as e:
         raise HTTPException(404, detail=repr(e))
 
+    redis_db.set(cache_key, json.dumps(author))
+    return author
+
+
+@app.get("/cache")
+async def get_cache():
+    return redis_db.get_cache()
+
 
 # ----------------------------- POST -----------------------------
 @app.post("/authors", status_code=201)
-def add_author(db: SessionDep, author: CreateAuthor) -> Authors:
+async def add_author(db: SessionDep, author: CreateAuthor) -> Authors:
     db_author = models.Authors(
         name=author.name,
         nacionality=author.nacionality
@@ -90,11 +134,12 @@ def add_author(db: SessionDep, author: CreateAuthor) -> Authors:
     db.add(db_author)
     db.commit()
 
+    redis_db.delete("get_authors")
     return Authors.model_validate(db_author)
 
 
 @app.post("/books", status_code=201)
-def add_author(db: SessionDep, book: CreateBook) -> Books:
+async def add_book(db: SessionDep, book: CreateBook) -> Books:
     db_book = models.Books(
         title=book.title,
         genre=book.genre,
@@ -104,12 +149,13 @@ def add_author(db: SessionDep, book: CreateBook) -> Books:
     db.add(db_book)
     db.commit()
 
+    redis_db.delete("get_books")
     return Books.model_validate(db_book)
 
 
 # ----------------------------- PUT -----------------------------
 @app.put("/books/{id_book}", status_code=200)
-def update_book(id_book: str, db: SessionDep, book: UpdateBook) -> Books:
+async def update_book(id_book: str, db: SessionDep, book: UpdateBook) -> Books:
     try:
         book_in = (
             db.query(models.Books)
@@ -131,11 +177,12 @@ def update_book(id_book: str, db: SessionDep, book: UpdateBook) -> Books:
     db.commit()
     db.refresh(book_in)
 
+    redis_db.delete(f"get_books_{id_book}")
     return Books.model_validate(book_in)
 
 
 @app.put("/authors/{id_author}", status_code=200)
-def update_author(id_author: str, db: SessionDep, author: UpdateAuthor) -> Books:
+async def update_author(id_author: str, db: SessionDep, author: UpdateAuthor) -> Books:
     try:
         author_in = (
             db.query(models.Authors)
@@ -154,12 +201,13 @@ def update_author(id_author: str, db: SessionDep, author: UpdateAuthor) -> Books
     db.commit()
     db.refresh(author_in)
 
+    redis_db.delete(f"get_authors_{id_author}")
     return Authors.model_validate(author_in)
 
 
 # ----------------------------- DELETE -----------------------------
 @app.delete("/books/{id_book}", status_code=200)
-def delete_book(id_book: int, db: SessionDep) -> Books:
+async def delete_book(id_book: int, db: SessionDep) -> Books:
     try:
         book_in = (
             db.query(models.Books)
@@ -171,12 +219,14 @@ def delete_book(id_book: int, db: SessionDep) -> Books:
 
     db.delete(book_in)
     db.commit()
-    
+
+    redis_db.delete(f"get_books")
+    redis_db.delete(f"get_books_{id_book}")
     return Books.model_validate(book_in)
 
 
 @app.delete("/authors/{id_author}", status_code=200)
-def delete_author(id_author: int, db: SessionDep) -> Authors:
+async def delete_author(id_author: int, db: SessionDep) -> Authors:
     try:
         author_in = (
             db.query(models.Authors)
@@ -185,8 +235,10 @@ def delete_author(id_author: int, db: SessionDep) -> Authors:
         )
     except Exception as e:
         raise HTTPException(404, detail=repr(e))
-    
+
     db.delete(author_in)
     db.commit()
 
+    redis_db.delete(f"get_authors")
+    redis_db.delete(f"get_authors_{id_author}")
     return Authors.model_validate(author_in)
