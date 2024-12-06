@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     REDIS_PASSWORD: str
     REDIS_PORT: int
     REDIS_SERVER: str
+    REDIS_EXPIRE_SECONDS: int
 
 
     @computed_field
