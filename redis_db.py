@@ -1,14 +1,3 @@
-# from redis_om import HashModel
-# from typing import Optional
-
-
-# class Requests(HashModel):
-#     endpoint: str
-#     method: str
-#     body: Optional[dict[str, str]]
-#     header: Optional[dict[str, str]]
-
-
 from redis import Redis
 from config import settings
 from typing import Any
