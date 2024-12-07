@@ -49,12 +49,13 @@ def init_redis(client: Redis) -> None:
 def main() -> None:
     logger.info("Inicializando Bases de datos\n")
 
-    logger.info("Base de datos en Postgres\n")
+    logger.info("Base de datos en Postgres")
     init_db(engine)
-
-    logger.info("Base de datos en Redis\n")
+    print()
+    logger.info("Base de datos en Redis")
     init_redis(redis_client)
 
+    print()
     logger.info("Bases de datos inicializadas")
 
 
