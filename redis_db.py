@@ -16,8 +16,8 @@ def get(key: str) -> Any:
     return redis_client.get(key)
 
 
-def delete(key: str) -> None:
-    redis_client.delete(key)
+def delete(*keys: str) -> None:
+    return redis_client.delete(*keys)
 
 
 def get_cache() -> dict[str, str]:
@@ -25,3 +25,8 @@ def get_cache() -> dict[str, str]:
     values = redis_client.mget(keys)
 
     return dict(zip(keys, values))
+
+
+def clear_cache() -> int:
+    keys = redis_client.keys("*")
+    return delete(*keys) if len(keys) else 0
