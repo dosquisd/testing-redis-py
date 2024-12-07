@@ -12,11 +12,11 @@ def set(key: str, value: Any, seconds: int = 0) -> None:
     redis_client.set(key, value, ex=seconds)
 
 
-def get(key: str) -> Any:
+def get(key: str) -> list[str]:
     return redis_client.get(key)
 
 
-def delete(*keys: str) -> None:
+def delete(*keys: str) -> int:
     return redis_client.delete(*keys)
 
 
