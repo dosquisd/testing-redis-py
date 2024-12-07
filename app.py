@@ -10,14 +10,16 @@ from schemas import (
     UpdateBook,
     UpdateAuthor
 )
+
 import redis_db
+from sqlalchemy.orm import Session
 
 import json
 
+from prestart import main
+
 from collections.abc import Generator
 from typing import Annotated
-
-from sqlalchemy.orm import Session
 
 
 def get_url() -> Generator[Session, None, None]:
@@ -28,17 +30,22 @@ def get_url() -> Generator[Session, None, None]:
         db.close()
 
 
-app = FastAPI()
+def lifespan(app: FastAPI):
+    main()
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
 
 SessionDep = Annotated[Session, Depends(get_url)]
 
 
+# ----------------------------- GET -----------------------------
 @app.get("/", status_code=200)
 async def root() -> ApiResponseDefault:
     return {"detail": "HOLI"}
 
 
-# ----------------------------- GET -----------------------------
 @app.get("/books", status_code=200)
 async def get_books(db: SessionDep) -> list[Books]:
     cache_key = "get_books"
