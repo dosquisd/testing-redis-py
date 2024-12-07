@@ -10,6 +10,8 @@ from schemas import (
     UpdateAuthor
 )
 
+from utils import get_author_in, get_book_in
+
 import redis_db
 from sqlalchemy.orm import Session
 
@@ -91,9 +93,7 @@ async def get_book(id_book: int, db: SessionDep) -> Books:
 
     try:
         book = Books.model_validate(
-            db.query(models.Books)
-            .filter(models.Books.id == id_book)
-            .first()
+            get_book_in(id_book, db)
         )
     except Exception:
         raise HTTPException(404, detail="Non existent book")
@@ -113,9 +113,7 @@ async def get_author(id_author: int, db: SessionDep) -> Authors:
 
     try:
         author = Authors.model_validate(
-            db.query(models.Authors)
-            .filter(models.Authors.id == id_author)
-            .first()
+            get_author_in(id_author, db)
         )
     except Exception as e:
         raise HTTPException(404, detail="Non existent author")
@@ -175,11 +173,7 @@ async def add_book(db: SessionDep, book: CreateBook) -> Books:
 # ----------------------------- PUT -----------------------------
 @app.put("/books/{id_book}", status_code=200)
 async def update_book(id_book: int, db: SessionDep, book: UpdateBook) -> Books:
-    book_in = (
-        db.query(models.Books)
-        .filter(models.Books.id == id_book)
-        .first()
-    )
+    book_in = get_book_in(id_book, db)
     if book_in is None:
         raise HTTPException(404, detail="Non existent book")
 
@@ -202,11 +196,7 @@ async def update_book(id_book: int, db: SessionDep, book: UpdateBook) -> Books:
 
 @app.put("/authors/{id_author}", status_code=200)
 async def update_author(id_author: int, db: SessionDep, author: UpdateAuthor) -> Authors:
-    author_in = (
-        db.query(models.Authors)
-        .filter(models.Authors.id == id_author)
-        .first()
-    )
+    author_in = get_author_in(id_author, db)
     if author_in is None:
         raise HTTPException(404, detail="Non existent author")
 
@@ -227,11 +217,7 @@ async def update_author(id_author: int, db: SessionDep, author: UpdateAuthor) ->
 # ----------------------------- DELETE -----------------------------
 @app.delete("/books/{id_book}", status_code=200)
 async def delete_book(id_book: int, db: SessionDep) -> Books:
-    book_in = (
-        db.query(models.Books)
-        .filter(models.Books.id == id_book)
-        .first()
-    )
+    book_in = get_book_in(id_book, db)
     if book_in is None:
         raise HTTPException(404, detail="Non existent book")
 
@@ -246,11 +232,7 @@ async def delete_book(id_book: int, db: SessionDep) -> Books:
 
 @app.delete("/authors/{id_author}", status_code=200)
 async def delete_author(id_author: int, db: SessionDep) -> Authors:
-    author_in = (
-        db.query(models.Authors)
-        .filter(models.Authors.id == id_author)
-        .first()
-    )
+    author_in = get_author_in(id_author, db)
     if author_in is None:
         raise HTTPException(404, detail="Non existent author")
 
