@@ -53,7 +53,7 @@ async def get_books(db: SessionDep) -> list[Books]:
             db.query(models.Books).all())
     )
 
-    redis_db.set(cache_key, json.dumps(books))
+    redis_db.set(cache_key, json.dumps([book.model_dump() for book in books]))
     return books
 
 
@@ -72,7 +72,7 @@ async def get_authors(db: SessionDep) -> list[Authors]:
         )
     )
 
-    redis_db.set(cache_key, json.dumps(authors))
+    redis_db.set(cache_key, json.dumps(author.model_dump() for author in authors))
     return authors
 
 
