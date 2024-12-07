@@ -258,3 +258,9 @@ async def delete_author(id_author: int, db: SessionDep) -> Authors:
     redis_db.delete(f"get_authors")
     redis_db.delete(f"get_authors_{id_author}")
     return Authors.model_validate(author_in)
+
+
+@app.delete("/cache")
+async def clear_cache():
+    keys = redis_db.redis_client.keys("*")
+    return redis_db.delete(*keys)
