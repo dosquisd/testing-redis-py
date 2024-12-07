@@ -14,15 +14,6 @@ from config import settings
 from typing import Any
 
 
-# redis_client: Redis = Redis(
-#     host=settings.REDIS_SERVER,
-#     port=settings.REDIS_PORT,
-#     username=settings.REDIS_USER,
-#     password=settings.REDIS_PASSWORD,
-#     decode_responses=True
-# )
-
-print(str(settings.REDIS_URI))
 redis_client: Redis = Redis.from_url(str(settings.REDIS_URI), decode_responses=True)
 
 def set(key: str, value: Any, seconds: int = 0) -> None:
