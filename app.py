@@ -127,7 +127,16 @@ async def get_author(id_author: int, db: SessionDep) -> Authors:
 
 @app.get("/cache")
 async def get_cache():
-    return redis_db.get_cache()
+    cache_key = "get_cache"
+    cached_value = redis_db.get(cache_key)
+
+    if cached_value:
+        return json.loads(cached_value)
+
+    cache = redis_db.get_cache()
+
+    redis_db.set(cache_key, json.dumps(cache))
+    return cache
 
 
 # ----------------------------- POST -----------------------------
