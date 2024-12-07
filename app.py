@@ -2,7 +2,6 @@ from fastapi import FastAPI, Depends, HTTPException
 
 import models
 from schemas import (
-    ApiResponseDefault,
     CreateBook,
     CreateAuthor,
     Authors,
@@ -33,7 +32,7 @@ def get_url() -> Generator[Session, None, None]:
 def lifespan(app: FastAPI):
     main()
     yield
-    
+    redis_db.clear_cache()
 
 
 app = FastAPI(lifespan=lifespan)
@@ -57,7 +56,7 @@ async def get_books(db: SessionDep) -> list[Books]:
         )
     )
 
-    redis_db.set(cache_key, json.dumps([book.model_dump(mode="json") for book in books]))
+    redis_db.set(cache_key, json.dumps([book.model_dump() for book in books]))
     redis_db.delete("get_cache")
     return books
 
@@ -96,8 +95,8 @@ async def get_book(id_book: int, db: SessionDep) -> Books:
             .filter(models.Books.id == id_book)
             .first()
         )
-    except Exception as e:
-        raise HTTPException(404, detail=repr(e))
+    except Exception:
+        raise HTTPException(404, detail="Non existent book")
 
     redis_db.set(cache_key, json.dumps(book.model_dump()))
     redis_db.delete("get_cache")
@@ -119,7 +118,7 @@ async def get_author(id_author: int, db: SessionDep) -> Authors:
             .first()
         )
     except Exception as e:
-        raise HTTPException(404, detail=repr(e))
+        raise HTTPException(404, detail="Non existent author")
 
     redis_db.set(cache_key, json.dumps(author.model_dump()))
     redis_db.delete("get_cache")
@@ -175,15 +174,14 @@ async def add_book(db: SessionDep, book: CreateBook) -> Books:
 
 # ----------------------------- PUT -----------------------------
 @app.put("/books/{id_book}", status_code=200)
-async def update_book(id_book: str, db: SessionDep, book: UpdateBook) -> Books:
-    try:
-        book_in = (
-            db.query(models.Books)
-            .filter(models.Books.id == id_book)
-            .first()
-        )
-    except Exception as e:
-        raise HTTPException(404, detail=repr(e))
+async def update_book(id_book: int, db: SessionDep, book: UpdateBook) -> Books:
+    book_in = (
+        db.query(models.Books)
+        .filter(models.Books.id == id_book)
+        .first()
+    )
+    if book_in is None:
+        raise HTTPException(404, detail="Non existent book")
 
     if book.title is not None:
         book_in.title = book.title
@@ -203,15 +201,14 @@ async def update_book(id_book: str, db: SessionDep, book: UpdateBook) -> Books:
 
 
 @app.put("/authors/{id_author}", status_code=200)
-async def update_author(id_author: str, db: SessionDep, author: UpdateAuthor) -> Books:
-    try:
-        author_in = (
-            db.query(models.Authors)
-            .filter(models.Authors.id == id_author)
-            .first()
-        )
-    except Exception as e:
-        raise HTTPException(404, detail=repr(e))
+async def update_author(id_author: int, db: SessionDep, author: UpdateAuthor) -> Authors:
+    author_in = (
+        db.query(models.Authors)
+        .filter(models.Authors.id == id_author)
+        .first()
+    )
+    if author_in is None:
+        raise HTTPException(404, detail="Non existent author")
 
     if author.name is not None:
         author_in.name = author.name
@@ -230,14 +227,13 @@ async def update_author(id_author: str, db: SessionDep, author: UpdateAuthor) ->
 # ----------------------------- DELETE -----------------------------
 @app.delete("/books/{id_book}", status_code=200)
 async def delete_book(id_book: int, db: SessionDep) -> Books:
-    try:
-        book_in = (
-            db.query(models.Books)
-            .filter(models.Books.id == id_book)
-            .first()
-        )
-    except Exception as e:
-        raise HTTPException(404, detail=repr(e))
+    book_in = (
+        db.query(models.Books)
+        .filter(models.Books.id == id_book)
+        .first()
+    )
+    if book_in is None:
+        raise HTTPException(404, detail="Non existent book")
 
     db.delete(book_in)
     db.commit()
@@ -250,14 +246,13 @@ async def delete_book(id_book: int, db: SessionDep) -> Books:
 
 @app.delete("/authors/{id_author}", status_code=200)
 async def delete_author(id_author: int, db: SessionDep) -> Authors:
-    try:
-        author_in = (
-            db.query(models.Authors)
-            .filter(models.Authors.id == id_author)
-            .first()
-        )
-    except Exception as e:
-        raise HTTPException(404, detail=repr(e))
+    author_in = (
+        db.query(models.Authors)
+        .filter(models.Authors.id == id_author)
+        .first()
+    )
+    if author_in is None:
+        raise HTTPException(404, detail="Non existent author")
 
     db.delete(author_in)
     db.commit()
@@ -270,5 +265,4 @@ async def delete_author(id_author: int, db: SessionDep) -> Authors:
 
 @app.delete("/cache")
 async def clear_cache() -> int:
-    keys = redis_db.redis_client.keys("*")
-    return redis_db.delete(*keys)
+    return redis_db.clear_cache()

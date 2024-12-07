@@ -2,10 +2,6 @@ from pydantic import BaseModel
 from typing import TypedDict, Optional
 
 
-class ApiResponseDefault(TypedDict):
-    detail: str
-
-
 class CreateBook(BaseModel):
     title: str
     genre: str
