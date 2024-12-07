@@ -33,6 +33,7 @@ def get_url() -> Generator[Session, None, None]:
 def lifespan(app: FastAPI):
     main()
     yield
+    
 
 
 app = FastAPI(lifespan=lifespan)
@@ -41,11 +42,6 @@ SessionDep = Annotated[Session, Depends(get_url)]
 
 
 # ----------------------------- GET -----------------------------
-@app.get("/", status_code=200)
-async def root() -> ApiResponseDefault:
-    return {"detail": "HOLI"}
-
-
 @app.get("/books", status_code=200)
 async def get_books(db: SessionDep) -> list[Books]:
     cache_key = "get_books"
@@ -57,10 +53,12 @@ async def get_books(db: SessionDep) -> list[Books]:
     books = list(
         map(
             lambda obj: Books.model_validate(obj),
-            db.query(models.Books).all())
+            db.query(models.Books).all()
+        )
     )
 
-    redis_db.set(cache_key, json.dumps([book.model_dump() for book in books]))
+    redis_db.set(cache_key, json.dumps([book.model_dump(mode="json") for book in books]))
+    redis_db.delete("get_cache")
     return books
 
 
@@ -79,7 +77,8 @@ async def get_authors(db: SessionDep) -> list[Authors]:
         )
     )
 
-    redis_db.set(cache_key, json.dumps(author.model_dump() for author in authors))
+    redis_db.set(cache_key, json.dumps([author.model_dump() for author in authors]))
+    redis_db.delete("get_cache")
     return authors
 
 
@@ -100,7 +99,8 @@ async def get_book(id_book: int, db: SessionDep) -> Books:
     except Exception as e:
         raise HTTPException(404, detail=repr(e))
 
-    redis_db.set(cache_key, json.dumps(book))
+    redis_db.set(cache_key, json.dumps(book.model_dump()))
+    redis_db.delete("get_cache")
     return book
 
 
@@ -121,7 +121,8 @@ async def get_author(id_author: int, db: SessionDep) -> Authors:
     except Exception as e:
         raise HTTPException(404, detail=repr(e))
 
-    redis_db.set(cache_key, json.dumps(author))
+    redis_db.set(cache_key, json.dumps(author.model_dump()))
+    redis_db.delete("get_cache")
     return author
 
 
@@ -136,6 +137,7 @@ async def get_cache():
     cache = redis_db.get_cache()
 
     redis_db.set(cache_key, json.dumps(cache))
+    redis_db.delete("get_cache")
     return cache
 
 
@@ -151,6 +153,7 @@ async def add_author(db: SessionDep, author: CreateAuthor) -> Authors:
     db.commit()
 
     redis_db.delete("get_authors")
+    redis_db.delete("get_cache")
     return Authors.model_validate(db_author)
 
 
@@ -166,6 +169,7 @@ async def add_book(db: SessionDep, book: CreateBook) -> Books:
     db.commit()
 
     redis_db.delete("get_books")
+    redis_db.delete("get_cache")
     return Books.model_validate(db_book)
 
 
@@ -194,6 +198,7 @@ async def update_book(id_book: str, db: SessionDep, book: UpdateBook) -> Books:
     db.refresh(book_in)
 
     redis_db.delete(f"get_books_{id_book}")
+    redis_db.delete("get_cache")
     return Books.model_validate(book_in)
 
 
@@ -218,6 +223,7 @@ async def update_author(id_author: str, db: SessionDep, author: UpdateAuthor) ->
     db.refresh(author_in)
 
     redis_db.delete(f"get_authors_{id_author}")
+    redis_db.delete("get_cache")
     return Authors.model_validate(author_in)
 
 
@@ -238,6 +244,7 @@ async def delete_book(id_book: int, db: SessionDep) -> Books:
 
     redis_db.delete(f"get_books")
     redis_db.delete(f"get_books_{id_book}")
+    redis_db.delete("get_cache")
     return Books.model_validate(book_in)
 
 
@@ -257,10 +264,11 @@ async def delete_author(id_author: int, db: SessionDep) -> Authors:
 
     redis_db.delete(f"get_authors")
     redis_db.delete(f"get_authors_{id_author}")
+    redis_db.delete("get_cache")
     return Authors.model_validate(author_in)
 
 
 @app.delete("/cache")
-async def clear_cache():
+async def clear_cache() -> int:
     keys = redis_db.redis_client.keys("*")
     return redis_db.delete(*keys)
