@@ -1,8 +1,10 @@
 from pydantic_core import MultiHostUrl
-
 from pydantic_settings import BaseSettings, SettingsConfigDict
-
 from pydantic import PostgresDsn, RedisDsn, computed_field
+
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 class Settings(BaseSettings):

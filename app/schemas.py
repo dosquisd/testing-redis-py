@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import TypedDict, Optional
+from typing import Optional
 
 
 class CreateBook(BaseModel):

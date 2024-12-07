@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Depends, HTTPException
 
-import models
+import models as models
 from schemas import (
     CreateBook,
     CreateAuthor,
@@ -12,7 +12,7 @@ from schemas import (
 
 from utils import get_author_in, get_book_in
 
-import redis_db
+import redis_db as redis_db
 from sqlalchemy.orm import Session
 
 import json

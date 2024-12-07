@@ -1,0 +1,57 @@
+# TODO: Initialize sql database, using init.sql or migrations, doesn't matter
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/pgdata
+    env_file:
+      - path: .env
+    environment:
+      - PGDATA=/var/lib/postgresql/data/pgdata
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD?Variable not set}
+      - POSTGRES_USER=${POSTGRES_USER?Variable not set}
+      - POSTGRES_DB=${POSTGRES_DB?Variable not set}
+    ports:
+      - '5432:5432'
+
+  cache:
+    image: redis:7.4.1
+    restart: unless-stopped
+    volumes:
+      - cache_data:/data
+    # This is unnecesary currently
+    # env_file:
+    #   - path: .env
+    # environment:
+    #   - REDIS_SERVER=${REDIS_SERVER?Variable not set}
+    #   - REDIS_PORT=${REDIS_PORT?Variable not set}
+    ports:
+      - '6379:6379'
+
+  api:
+    image: api:latest
+    restart: always
+    depends_on:
+      - db
+      - cache
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    env_file:
+      - path: .env
+    environment:
+      - POSTGRES_SERVER=db
+      - POSTGRES_PORT=${POSTGRES_PORT?Variable not set}
+      - POSTGRES_USER=${POSTGRES_USER?Variable not set}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD?Variable not set}
+      - POSTGRES_DB=${POSTGRES_DB?Variable not set}
+      - REDIS_SERVER=cache
+      - REDIS_PORT=${REDIS_PORT?Variable not set}
+      - REDIS_EXPIRE_SECONDS=${REDIS_EXPIRE_SECONDS?Variable not set}
+    ports:
+      - '8000:8000'
+
+volumes:
+  postgres_data:
+  cache_data:

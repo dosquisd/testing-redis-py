@@ -57,7 +57,3 @@ def main() -> None:
 
     print()
     logger.info("Bases de datos inicializadas")
-
-
-if __name__ == "__main__":
-    main()
