@@ -32,6 +32,7 @@ class Settings(BaseSettings):
         )
 
 
+    REDIS_PASSWORD: str
     REDIS_PORT: int
     REDIS_SERVER: str
     REDIS_EXPIRE_SECONDS: int
@@ -43,7 +44,8 @@ class Settings(BaseSettings):
         return MultiHostUrl.build(
             scheme="redis",
             host=self.REDIS_SERVER,
-            port=self.REDIS_PORT
+            port=self.REDIS_PORT,
+            password=self.REDIS_PASSWORD
         )
 
 
